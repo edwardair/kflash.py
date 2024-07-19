@@ -17,6 +17,9 @@ import json
 import re
 import os
 
+def with_stdout(callback):
+    if sys.stdout and hasattr(sys.stdout, "flush"):
+        callback(sys.stdout)
 
 class KFlash:
     print_callback = None
@@ -761,9 +764,11 @@ class KFlash:
 
                 # KFlash.log(out)
                 while 1:
-                    sys.stdout.write('[RECV] raw data: ')
-                    sys.stdout.write(binascii.hexlify(self._port.read(1)).decode())
-                    sys.stdout.flush()
+                    def __handle(stdout):
+                        stdout.write('[RECV] raw data: ')
+                        stdout.write(binascii.hexlify(self._port.read(1)).decode())
+                        stdout.flush()
+                    with_stdout(lambda s: __handle(s))
 
             def recv_one_return(self, timeout_s = None):
                 timeout_init = time.time()
@@ -777,7 +782,7 @@ class KFlash:
                         self.raise_exception( TimeoutError )
                     c = self._port.read(1)
                     #sys.stdout.write(binascii.hexlify(c).decode())
-                    sys.stdout.flush()
+                    with_stdout(lambda s: s.flush())
                     if c == b'\xc0':
                         break
 
@@ -787,7 +792,7 @@ class KFlash:
                         self.raise_exception( TimeoutError )
                     c = self._port.read(1)
                     #sys.stdout.write(binascii.hexlify(c).decode())
-                    sys.stdout.flush()
+                    with_stdout(lambda s: s.flush())
                     if c == b'\xc0':
                         break
 
