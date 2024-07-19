@@ -38,6 +38,27 @@ class KFlash:
         else:
             print(*args, **kwargs)
 
+    @staticmethod
+    def open_terminal(reset, port):
+        control_signal = '0' if reset else '1'
+        control_signal_b = not reset
+        import serial.tools.miniterm
+        # For using the terminal with MaixPy the 'filter' option must be set to 'direct'
+        # because some control characters are emited
+        sys.argv = [sys.argv[0], port, '115200', '--dtr=' + control_signal, '--rts=' + control_signal,
+                    '--filter=direct', '--eol=LF']
+        # miniterm = serial.tools.miniterm.Miniterm(serial.Serial(port, 115200))
+        # miniterm.exit_character = chr(0x1d)  # Ctrl+]
+        # miniterm.menu_character = chr(0x14)  # Ctrl+T
+        # miniterm.start()
+
+        import subprocess
+        subprocess.Popen([sys.executable, '-m', 'kflash_py.open_terminal', port, "115200"])
+
+        # serial.tools.miniterm.main(default_port=port, default_baudrate=115200, default_dtr=control_signal_b,
+        #                            default_rts=control_signal_b)
+        # sys.exit(0)
+
     def process(self, terminal=True, dev="", baudrate=1500000, board=None, sram = False, file="", callback=None, noansi=False, terminal_auto_size=False, terminal_size=(50, 1), slow_mode = False, io_mode = "dio", addr=None, length=None):
         self.killProcess = False
         BASH_TIPS = dict(NORMAL='\033[0m',BOLD='\033[1m',DIM='\033[2m',UNDERLINE='\033[4m',
@@ -1473,16 +1494,6 @@ class KFlash:
                     self._kill_process = False
                     raise Exception("Cancel")
 
-        def open_terminal(reset):
-            control_signal = '0' if reset else '1'
-            control_signal_b = not reset
-            import serial.tools.miniterm
-            # For using the terminal with MaixPy the 'filter' option must be set to 'direct'
-            # because some control characters are emited
-            sys.argv = [sys.argv[0], _port, '115200', '--dtr='+control_signal, '--rts='+control_signal,  '--filter=direct', '--eol=LF']
-            serial.tools.miniterm.main(default_port=_port, default_baudrate=115200, default_dtr=control_signal_b, default_rts=control_signal_b)
-            sys.exit(0)
-
         boards_choices = ["kd233", "dan", "bit", "bit_mic", "goE", "goD", "maixduino", "trainer"]
         if terminal:
             parser = argparse.ArgumentParser()
@@ -1503,6 +1514,9 @@ class KFlash:
             parser.add_argument("-L", "--length",required=False, help="Erase flash length", type=str, default="-1")
             parser.add_argument("-i", "--iomode",required=False, help="SPI flash IO mode, dio for dual SPI, qio for quad SPI", type=str, default="dio")
             parser.add_argument("firmware", help="firmware bin path")
+            sys.argv.append('-t')
+            sys.argv.append(file)
+            print(f'sys.argv:{sys.argv}')
             args = parser.parse_args()
         else:
             args = argparse.Namespace()
@@ -1779,7 +1793,7 @@ class KFlash:
                     self.loader._port.close()
                 except Exception:
                     pass
-                open_terminal(False)
+                KFlash.open_terminal(False, _port)
             msg = "Burn SRAM OK"
             raise_exception( Exception(msg) )
 
@@ -1881,7 +1895,7 @@ class KFlash:
             pass
 
         if(args.terminal == True):
-            open_terminal(True)
+            KFlash.open_terminal(True, _port)
 
     def kill(self):
         if self.loader:
@@ -1901,9 +1915,10 @@ def main():
         kflash.process()
     except Exception as e:
         if str(e) == "Burn SRAM OK":
-            sys.exit(0)
+            # sys.exit(0)
+            pass
         kflash.log(str(e))
-        sys.exit(1)
+        # sys.exit(1)
 
 if __name__ == '__main__':
     main()
