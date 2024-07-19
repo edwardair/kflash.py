@@ -3,6 +3,7 @@
 
 from __future__ import (division, print_function)
 
+import subprocess
 import sys
 import time
 import zlib
@@ -39,25 +40,12 @@ class KFlash:
             print(*args, **kwargs)
 
     @staticmethod
-    def open_terminal(reset, port):
-        control_signal = '0' if reset else '1'
-        control_signal_b = not reset
-        import serial.tools.miniterm
-        # For using the terminal with MaixPy the 'filter' option must be set to 'direct'
-        # because some control characters are emited
-        sys.argv = [sys.argv[0], port, '115200', '--dtr=' + control_signal, '--rts=' + control_signal,
-                    '--filter=direct', '--eol=LF']
-        # miniterm = serial.tools.miniterm.Miniterm(serial.Serial(port, 115200))
-        # miniterm.exit_character = chr(0x1d)  # Ctrl+]
-        # miniterm.menu_character = chr(0x14)  # Ctrl+T
-        # miniterm.start()
-
-        import subprocess
-        subprocess.Popen([sys.executable, '-m', 'kflash_py.open_terminal', port, "115200"])
-
-        # serial.tools.miniterm.main(default_port=port, default_baudrate=115200, default_dtr=control_signal_b,
-        #                            default_rts=control_signal_b)
-        # sys.exit(0)
+    def open_terminal(port):
+        if sys.executable.endswith('python.exe'):  # 非打包环境
+            from kflash_py import open_terminal
+            open_terminal.open_terminal(True, port, '115200')
+        else:
+            subprocess.Popen(['cmd','/K',sys.executable, 'terminal', port, "115200"], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
     def process(self, terminal=True, dev="", baudrate=1500000, board=None, sram = False, file="", callback=None, noansi=False, terminal_auto_size=False, terminal_size=(50, 1), slow_mode = False, io_mode = "dio", addr=None, length=None):
         self.killProcess = False
