@@ -39,15 +39,25 @@ class KFlash:
         else:
             print(*args, **kwargs)
 
-    @staticmethod
-    def open_terminal(port, reset=True):
-        if sys.executable.endswith('python.exe'):  # 非打包环境
-            from kflash_py import open_terminal
-            open_terminal.open_terminal(reset, port, '115200')
-        else:
-            subprocess.Popen(['cmd','/K',sys.executable, 'terminal', port, "115200"], creationflags=subprocess.CREATE_NEW_CONSOLE)
-
-    def process(self, terminal=True, dev="", baudrate=1500000, board=None, sram = False, file="", callback=None, noansi=False, terminal_auto_size=False, terminal_size=(50, 1), slow_mode = False, io_mode = "dio", addr=None, length=None):
+    def process(self, terminal=True, dev="", baudrate=1500000, board=None, sram = False, file="", callback=None, noansi=False, terminal_auto_size=False, terminal_size=(50, 1), slow_mode = False, io_mode = "dio", addr=None, length=None, only_reboot=False):
+        """
+        :param terminal:
+        :param dev:
+        :param baudrate:
+        :param board:
+        :param sram:
+        :param file:
+        :param callback:
+        :param noansi:
+        :param terminal_auto_size:
+        :param terminal_size:
+        :param slow_mode:
+        :param io_mode:
+        :param addr:
+        :param length:
+        :param only_reboot: ==True：则仅用于重启并连接串口终端，查看运行日志
+        :return:
+        """
         self.killProcess = False
         BASH_TIPS = dict(NORMAL='\033[0m',BOLD='\033[1m',DIM='\033[2m',UNDERLINE='\033[4m',
                             DEFAULT='\033[0m', RED='\033[31m', YELLOW='\033[33m', GREEN='\033[32m',
@@ -1494,6 +1504,7 @@ class KFlash:
             parser.add_argument("-v", "--version", help="Print version.", action='version', version='1.1.6')
             parser.add_argument("--verbose", help="Increase output verbosity", default=False, action="store_true")
             parser.add_argument("-t", "--terminal", help="Start a terminal after finish (Python miniterm)", default=False, action="store_true")
+            parser.add_argument("-r", "--reboot", help="Start a terminal after finish (Python miniterm)", default=False, action="store_true")
             parser.add_argument("-n", "--noansi", help="Do not use ANSI colors, recommended in Windows CMD", default=False, action="store_true")
             parser.add_argument("-s", "--sram", help="Download firmware to SRAM and boot", default=False, action="store_true")
             parser.add_argument("-B", "--Board",required=False, type=str, help="Select dev board", choices=boards_choices)
@@ -1502,9 +1513,7 @@ class KFlash:
             parser.add_argument("-L", "--length",required=False, help="Erase flash length", type=str, default="-1")
             parser.add_argument("-i", "--iomode",required=False, help="SPI flash IO mode, dio for dual SPI, qio for quad SPI", type=str, default="dio")
             parser.add_argument("firmware", help="firmware bin path")
-            sys.argv.append('-t')
-            sys.argv.append(file)
-            print(f'sys.argv:{sys.argv}')
+            print(f'parser sys.argv:{sys.argv}')
             args = parser.parse_args()
         else:
             args = argparse.Namespace()
@@ -1515,7 +1524,8 @@ class KFlash:
             setattr(args, "erase", False)
             setattr(args, "key", None)
             setattr(args, "verbose", False)
-            setattr(args, "terminal", False)
+            setattr(args, "terminal", terminal)
+            setattr(args, "reboot", only_reboot)
             setattr(args, "noansi", False)
             setattr(args, "sram", False)
             setattr(args, "Board", None)
@@ -1590,6 +1600,16 @@ class KFlash:
 
         self.loader = MAIXLoader(port=_port, baudrate=115200)
         file_format = ProgramFileFormat.FMT_BINARY
+
+        if args.reboot:
+            print(f"force reboot...")
+            try:
+                self.loader._port.close()
+            except Exception:
+                pass
+            from kflash_py.open_terminal import open_terminal
+            open_terminal(True, _port)
+            return
 
         # 0. Check firmware or cmd
         cmds = ['erase']
@@ -1781,7 +1801,8 @@ class KFlash:
                     self.loader._port.close()
                 except Exception:
                     pass
-                KFlash.open_terminal(_port, reset=False)
+                from kflash_py.open_terminal import open_terminal
+                open_terminal(False, _port)
             msg = "Burn SRAM OK"
             raise_exception( Exception(msg) )
 
@@ -1883,7 +1904,8 @@ class KFlash:
             pass
 
         if(args.terminal == True):
-            KFlash.open_terminal(_port)
+            from kflash_py.open_terminal import open_terminal
+            open_terminal(True, _port)
 
     def kill(self):
         if self.loader:
