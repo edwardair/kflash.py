@@ -40,10 +40,10 @@ class KFlash:
             print(*args, **kwargs)
 
     @staticmethod
-    def open_terminal(port):
+    def open_terminal(port, reset=True):
         if sys.executable.endswith('python.exe'):  # 非打包环境
             from kflash_py import open_terminal
-            open_terminal.open_terminal(True, port, '115200')
+            open_terminal.open_terminal(reset, port, '115200')
         else:
             subprocess.Popen(['cmd','/K',sys.executable, 'terminal', port, "115200"], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
@@ -1781,7 +1781,7 @@ class KFlash:
                     self.loader._port.close()
                 except Exception:
                     pass
-                KFlash.open_terminal(False, _port)
+                KFlash.open_terminal(_port, reset=False)
             msg = "Burn SRAM OK"
             raise_exception( Exception(msg) )
 
@@ -1883,7 +1883,7 @@ class KFlash:
             pass
 
         if(args.terminal == True):
-            KFlash.open_terminal(True, _port)
+            KFlash.open_terminal(_port)
 
     def kill(self):
         if self.loader:
